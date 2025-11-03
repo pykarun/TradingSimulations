@@ -258,19 +258,22 @@ def plot_results(portfolio_df, qqq_main_df, initial_capital, actions_log, ma_col
 st.set_page_config(layout="wide")
 st.title("TQQQ/SQQQ Moving Average Strategy Backtester")
 
-st.markdown("""
-### How The Strategy Works
-This backtester simulates a simple trend-following strategy based on a single Moving Average (MA) of the QQQ ETF. You can choose between a Simple Moving Average (SMA) or an Exponential Moving Average (EMA) in the sidebar.
+# Short description + clickable expander for full details
+st.markdown("A simple moving-average based TQQQ/SQQQ backtester. Click for details:")
+with st.expander("How The Strategy Works"):
+    st.markdown("""
+    ### How The Strategy Works
+    This backtester simulates a simple trend-following strategy based on a single Moving Average (MA) of the QQQ ETF. You can choose between a Simple Moving Average (SMA) or an Exponential Moving Average [...]
 
-**Decision Logic:**
-The core of the strategy is a daily decision made near the market close. For this simulation, we use the official daily closing price to represent this decision point (e.g., the price at 3:55 PM EST).
+    **Decision Logic:**
+    The core of the strategy is a daily decision made near the market close. For this simulation, we use the official daily closing price to represent this decision point (e.g., the price at 3:55 PM EST).
 
-1.  **Signal Check**: At the end of each trading day, the strategy compares QQQ's closing price to its selected Moving Average (SMA or EMA).
-2.  **Uptrend (Price > MA)**: If the price is above the MA, the strategy decides to hold **TQQQ** for the next trading day to capture leveraged upside moves.
-3.  **Downtrend (Price < MA)**: If the price is below the MA, the strategy takes a defensive position for the next day, either by holding **SQQQ** (to profit from a downturn) or by moving to **Cash**.
+    1.  **Signal Check**: At the end of each trading day, the strategy compares QQQ's closing price to its selected Moving Average (SMA or EMA).
+    2.  **Uptrend (Price > MA)**: If the price is above the MA, the strategy decides to hold **TQQQ** for the next trading day to capture leveraged upside moves.
+    3.  **Downtrend (Price < MA)**: If the price is below the MA, the strategy takes a defensive position for the next day, either by holding **SQQQ** (to profit from a downturn) or by moving to **Cash**.
 
-The backtest assumes a trade is executed based on the previous day's closing signal and held for the entire following day, with the return calculated from close-to-close.
-""")
+    The backtest assumes a trade is executed based on the previous day's closing signal and held for the entire following day, with the return calculated from close-to-close.
+    """)
 st.markdown("---")
 
 # --- Sidebar for User Inputs ---
