@@ -78,6 +78,9 @@ def render_step2():
         enable_macd, macd_config = _render_macd_section()
     with col2:
         enable_adx, adx_config = _render_adx_section()
+    # Supertrend section
+    with st.container(border=True):
+        enable_supertrend, st_config = _render_supertrend_section()
     
     # Initial Capital
     st.markdown("---")
@@ -102,6 +105,7 @@ def render_step2():
             enable_sl, sl_config, enable_bb, bb_config,
             enable_atr, atr_config, enable_msl, msl_config,
             enable_macd, macd_config, enable_adx, adx_config
+            , enable_supertrend, st_config
         )
     
     # Display Results
@@ -434,12 +438,45 @@ def _render_adx_section():
         }
 
 
+def _render_supertrend_section():
+    """Render Supertrend configuration section."""
+    with st.container(border=True):
+        st.markdown("**⚡ Supertrend Filter** (Optional)")
+        enable_supertrend = st.checkbox("Enable Supertrend", value=False, key="enable_supertrend", help="Include Supertrend filter in grid search")
+
+        if not enable_supertrend:
+            st.caption("⚠️ Supertrend is disabled.")
+            return False, {}
+
+        st.caption("Use Supertrend as a directional buy filter (requires price above Supertrend to buy)")
+
+        st_period_range = st.multiselect(
+            "Supertrend ATR Period",
+            options=[7, 10, 14, 21],
+            default=[10],
+            help="ATR period used by Supertrend"
+        )
+
+        st_multiplier_range = st.multiselect(
+            "Supertrend Multiplier",
+            options=[1.5, 2.0, 2.5, 3.0],
+            default=[3.0],
+            help="ATR multiplier used by Supertrend"
+        )
+
+        return enable_supertrend, {
+            'st_period_range': st_period_range,
+            'st_multiplier_range': st_multiplier_range
+        }
+
+
 def _execute_grid_search(
     selected_periods, test_multiple_periods, grid_capital,
     enable_ema, ema_config, enable_rsi, rsi_config,
     enable_sl, sl_config, enable_bb, bb_config,
     enable_atr, atr_config, enable_msl, msl_config,
     enable_macd, macd_config, enable_adx, adx_config
+    , enable_supertrend=None, st_config=None
 ):
     """Execute the grid search with given parameters."""
     
@@ -458,6 +495,7 @@ def _execute_grid_search(
         enable_sl, sl_config, enable_bb, bb_config,
         enable_atr, atr_config, enable_msl, msl_config,
         enable_macd, macd_config, enable_adx, adx_config
+        , enable_supertrend, st_config
     )
     
     # Determine periods to test
@@ -544,6 +582,7 @@ def _execute_grid_search(
                     params['use_adx'],
                     params['adx_period'],
                     params['adx_threshold']
+                    , params.get('use_supertrend', False), params.get('st_period', 10), params.get('st_multiplier', 3.0)
                 )
                 
                 # Calculate metrics
@@ -609,6 +648,7 @@ def _generate_param_combinations(
     enable_sl, sl_config, enable_bb, bb_config,
     enable_atr, atr_config, enable_msl, msl_config,
     enable_macd, macd_config, enable_adx, adx_config
+    , enable_supertrend=None, st_config=None
 ):
     """Generate all parameter combinations for grid search using itertools."""
     
@@ -672,20 +712,29 @@ def _generate_param_combinations(
         adx_config.get('adx_threshold_range', [25]) if enable_adx else [25]
     ))
 
+    # Supertrend parameters
+    st_params = list(itertools.product(
+        ["Enabled", "Disabled"] if enable_supertrend else ["Disabled"],
+        st_config.get('st_period_range', [10]) if enable_supertrend and st_config else [10],
+        st_config.get('st_multiplier_range', [3.0]) if enable_supertrend and st_config else [3.0]
+    ))
+
     # Combine all parameter sets
     all_combinations = itertools.product(
         ema_strategy_params, rsi_params, sl_params, bb_params,
         atr_params, msl_params, macd_params, adx_params
+        , st_params
     )
 
     for combo in all_combinations:
-        ema_p, rsi_p, sl_p, bb_p, atr_p, msl_p, macd_p, adx_p = combo
+        ema_p, rsi_p, sl_p, bb_p, atr_p, msl_p, macd_p, adx_p, st_p = combo
 
         use_bb = bb_p[0] == "Enabled"
         use_atr = atr_p[0] == "Enabled"
         use_msl = msl_p[0] == "Enabled"
         use_macd = macd_p[0] == "Enabled"
         use_adx = adx_p[0] == "Enabled"
+        use_st = st_p[0] == "Enabled"
 
         param_dict = _create_param_dict(
             use_ema=enable_ema,
@@ -715,6 +764,7 @@ def _generate_param_combinations(
             use_adx=use_adx,
             adx_period=adx_p[1],
             adx_thresh=adx_p[2]
+            , use_supertrend=use_st, st_period=st_p[1], st_multiplier=st_p[2]
         )
         param_combinations.append(param_dict)
         
@@ -729,7 +779,8 @@ def _create_param_dict(
     use_atr, atr_period, atr_mult,
     use_msl_msh, msl_period, msl_lookback,
     use_macd, macd_fast, macd_slow, macd_signal,
-    use_adx, adx_period, adx_thresh
+    use_adx, adx_period, adx_thresh,
+    use_supertrend=False, st_period=10, st_multiplier=3.0
 ):
     """Create a parameter dictionary."""
     return {
@@ -763,7 +814,10 @@ def _create_param_dict(
         'macd_signal_period': macd_signal,
         'use_adx': use_adx,
         'adx_period': adx_period,
-        'adx_threshold': adx_thresh
+        'adx_threshold': adx_thresh,
+        'use_supertrend': use_supertrend,
+        'st_period': st_period,
+        'st_multiplier': st_multiplier
     }
 
 
@@ -794,6 +848,8 @@ def _build_param_string(params, period_name=None):
         
     if params.get('use_adx', False):
         param_str += f" | ADX({params['adx_period']},{params['adx_threshold']})"
+    if params.get('use_supertrend', False):
+        param_str += f" | ST({params['st_period']},{params['st_multiplier']})"
     
     if period_name:
         param_str = f"[{period_name}] {param_str}"

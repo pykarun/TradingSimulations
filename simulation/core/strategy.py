@@ -3,7 +3,7 @@ import pandas as pd
 from .indicators import (
     calculate_ema, calculate_double_ema, calculate_rsi,
     calculate_bollinger_bands, calculate_atr, calculate_msl_msh,
-    calculate_macd, calculate_adx
+    calculate_macd, calculate_adx, calculate_supertrend
 )
 
 
@@ -16,7 +16,8 @@ def run_tqqq_only_strategy(
     atr_multiplier=2.0, use_msl_msh=False, msl_period=20, msh_period=20,
     msl_lookback=5, msh_lookback=5, use_ema=True, use_macd=False,
     macd_fast=12, macd_slow=26, macd_signal_period=9, use_adx=False,
-    adx_period=14, adx_threshold=25
+    adx_period=14, adx_threshold=25,
+    use_supertrend=False, st_period=10, st_multiplier=3.0
 ):
     """Smart Leverage Strategy - TQQQ with EMA, RSI, Bollinger Bands & Stop-Loss.
     
@@ -81,6 +82,15 @@ def run_tqqq_only_strategy(
         
     if use_adx:
         qqq_data = calculate_adx(qqq_data, adx_period)
+
+    if use_supertrend:
+        # Calculate Supertrend on QQQ and TQQQ data
+        try:
+            qqq_data = calculate_supertrend(qqq_data, period=st_period, multiplier=st_multiplier)
+            tqqq_data = calculate_supertrend(tqqq_data, period=st_period, multiplier=st_multiplier)
+        except Exception:
+            # If Supertrend calculation fails, ensure the rest still runs
+            pass
     
     sim_data = qqq_data[start_date:end_date].copy()
     
@@ -196,6 +206,12 @@ def run_tqqq_only_strategy(
                 if pd.notna(adx) and pd.notna(plus_di) and pd.notna(minus_di):
                     if adx < adx_threshold or plus_di < minus_di:
                         signal = 'SELL'
+
+            # Supertrend buy filter: require Supertrend direction up for buys
+            if use_supertrend and signal == 'BUY':
+                st_dir = sim_data.iloc[i].get('ST_dir', None)
+                if pd.isna(st_dir) or st_dir != 1:
+                    signal = 'SELL'
 
         # Standalone SELL conditions that can override anything
         if use_bb:

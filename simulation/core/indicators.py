@@ -207,3 +207,113 @@ def calculate_adx(data, period=14):
     df.drop(['H-L', 'H-PC', 'L-PC', 'TR', '+DM', '-DM'], axis=1, inplace=True, errors='ignore')
     
     return df
+
+
+def calculate_supertrend(data, period=10, multiplier=3.0):
+    """Calculate Supertrend indicator (pure pandas implementation).
+
+    This implementation follows the common TradingView Supertrend logic:
+    - ATR is calculated using `calculate_atr` (simple rolling mean of True Range)
+    - Basic Upper/Lower bands derived from HL2 +/- multiplier * ATR
+    - Final bands are adjusted to avoid whipsaws
+    - Supertrend flips between the final bands and a direction flag is provided
+
+    Args:
+        data: DataFrame with 'High', 'Low', 'Close' columns and a DatetimeIndex
+        period: ATR period (default 10)
+        multiplier: ATR multiplier (default 3.0)
+
+    Returns:
+        DataFrame with added columns: 'ATR', 'ST_upperband', 'ST_lowerband', 'Supertrend', 'ST_dir'
+            - 'ST_dir' = 1 for up trend, -1 for down trend
+    """
+    df = data.copy()
+
+    # Ensure required columns exist
+    for col in ['High', 'Low', 'Close']:
+        if col not in df.columns:
+            raise ValueError(f"DataFrame must contain '{col}' column to calculate Supertrend")
+
+    # HL2
+    hl2 = (df['High'] + df['Low']) / 2.0
+
+    # ATR (use rolling mean of True Range to stay dependency-free)
+    high_low = df['High'] - df['Low']
+    high_prevclose = (df['High'] - df['Close'].shift(1)).abs()
+    low_prevclose = (df['Low'] - df['Close'].shift(1)).abs()
+    tr = pd.concat([high_low, high_prevclose, low_prevclose], axis=1).max(axis=1)
+    atr = tr.rolling(window=period, min_periods=1).mean()
+
+    basic_ub = hl2 + (multiplier * atr)
+    basic_lb = hl2 - (multiplier * atr)
+
+    final_ub = basic_ub.copy()
+    final_lb = basic_lb.copy()
+
+    supertrend = pd.Series(index=df.index, dtype='float64')
+    dir_series = pd.Series(index=df.index, dtype='int8')
+
+    # Initialize first row
+    last_final_ub = basic_ub.iloc[0]
+    last_final_lb = basic_lb.iloc[0]
+    last_supertrend = basic_ub.iloc[0]
+    last_dir = -1  # start as down by convention
+
+    final_ub.iloc[0] = last_final_ub
+    final_lb.iloc[0] = last_final_lb
+    supertrend.iloc[0] = last_supertrend
+    dir_series.iloc[0] = last_dir
+
+    for i in range(1, len(df)):
+        curr_basic_ub = basic_ub.iat[i]
+        curr_basic_lb = basic_lb.iat[i]
+        prev_close = df['Close'].iat[i-1]
+
+        # Final upper band
+        if (curr_basic_ub < last_final_ub) or (prev_close > last_final_ub):
+            curr_final_ub = curr_basic_ub
+        else:
+            curr_final_ub = last_final_ub
+
+        # Final lower band
+        if (curr_basic_lb > last_final_lb) or (prev_close < last_final_lb):
+            curr_final_lb = curr_basic_lb
+        else:
+            curr_final_lb = last_final_lb
+
+        final_ub.iat[i] = curr_final_ub
+        final_lb.iat[i] = curr_final_lb
+
+        curr_close = df['Close'].iat[i]
+
+        # Determine Supertrend value
+        if last_supertrend == last_final_ub:
+            if curr_close <= curr_final_ub:
+                curr_supertrend = curr_final_ub
+            else:
+                curr_supertrend = curr_final_lb
+        else:
+            if curr_close >= curr_final_lb:
+                curr_supertrend = curr_final_lb
+            else:
+                curr_supertrend = curr_final_ub
+
+        # Direction: up (1) if price above supertrend, else down (-1)
+        curr_dir = 1 if curr_close > curr_supertrend else -1
+
+        supertrend.iat[i] = curr_supertrend
+        dir_series.iat[i] = curr_dir
+
+        # Shift last values for next iteration
+        last_final_ub = curr_final_ub
+        last_final_lb = curr_final_lb
+        last_supertrend = curr_supertrend
+        last_dir = curr_dir
+
+    df['ATR'] = atr
+    df['ST_upperband'] = final_ub
+    df['ST_lowerband'] = final_lb
+    df['Supertrend'] = supertrend
+    df['ST_dir'] = dir_series
+
+    return df

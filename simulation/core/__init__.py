@@ -9,6 +9,8 @@ from .indicators import (
     calculate_msl_msh,
     calculate_macd,
     calculate_adx
+    ,
+    calculate_supertrend
 )
 from .strategy import run_tqqq_only_strategy
 
@@ -22,5 +24,6 @@ __all__ = [
     'calculate_msl_msh',
     'calculate_macd',
     'calculate_adx',
+    'calculate_supertrend',
     'run_tqqq_only_strategy'
 ]

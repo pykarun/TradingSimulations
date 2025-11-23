@@ -253,11 +253,43 @@ def _render_testing_tabs(test_tab1, test_tab2, test_tab3, params):
         st.info("Backtest your strategy on historical data with detailed performance analysis.")
         
         st.markdown("**Parameters:**")
+        # Quick presets for common historical periods
+        presets = [
+            "Custom (manual)",
+            "COVID Crash (Feb-Apr 2020)",
+            "Whole of 2020",
+            "Trade War (2018-2019)",
+            "Ukraine War (2022- )",
+            "Post-2011 (Long Term)"
+        ]
+        preset = st.selectbox("Quick Period Presets", options=presets, index=0, help="Choose a preset period or select Custom to set dates manually")
+
+        # Determine default start/end based on preset
+        today = datetime.date.today()
+        if preset == "COVID Crash (Feb-Apr 2020)":
+            default_start = datetime.date(2020, 2, 20)
+            default_end = datetime.date(2020, 4, 30)
+        elif preset == "Whole of 2020":
+            default_start = datetime.date(2020, 1, 1)
+            default_end = datetime.date(2020, 12, 31)
+        elif preset == "Trade War (2018-2019)":
+            default_start = datetime.date(2018, 1, 1)
+            default_end = datetime.date(2019, 12, 31)
+        elif preset == "Ukraine War (2022- )":
+            default_start = datetime.date(2022, 2, 24)
+            default_end = today
+        elif preset == "Post-2011 (Long Term)":
+            default_start = datetime.date(2011, 1, 1)
+            default_end = today
+        else:
+            default_start = datetime.date(2020, 1, 1)
+            default_end = today
+
         col1, col2, col3 = st.columns(3)
         with col1:
-            start_date = st.date_input("Start Date", value=datetime.date(2020, 1, 1), min_value=datetime.date(2010, 3, 31), max_value=datetime.date.today())
+            start_date = st.date_input("Start Date", value=default_start, min_value=datetime.date(2010, 3, 31), max_value=datetime.date.today())
         with col2:
-            end_date = st.date_input("End Date", value=datetime.date.today(), min_value=datetime.date(2010, 3, 31), max_value=datetime.date.today())
+            end_date = st.date_input("End Date", value=default_end, min_value=datetime.date(2010, 3, 31), max_value=datetime.date.today())
         with col3:
             initial_capital = st.number_input("Initial Capital ($)", min_value=1000, max_value=1000000, value=10000, step=1000)
         
@@ -537,7 +569,7 @@ def _run_custom_simulation(params, test_params):
             params.get('use_macd', False), params.get('macd_fast', 12),
             params.get('macd_slow', 26), params.get('macd_signal_period', 9),
             params.get('use_adx', False), params.get('adx_period', 14),
-            params.get('adx_threshold', 25)
+            params.get('adx_threshold', 25), params.get('use_supertrend', False), params.get('st_period', 10), params.get('st_multiplier', 3.0)
         )
         
         # Calculate QQQ benchmark
@@ -667,7 +699,7 @@ def _run_monte_carlo(params, test_params):
             params.get('use_macd', False), params.get('macd_fast', 12),
             params.get('macd_slow', 26), params.get('macd_signal_period', 9),
             params.get('use_adx', False), params.get('adx_period', 14),
-            params.get('adx_threshold', 25)
+            params.get('adx_threshold', 25), params.get('use_supertrend', False), params.get('st_period', 10), params.get('st_multiplier', 3.0)
         )
         
         portfolio_df = result['portfolio_df'].copy()
