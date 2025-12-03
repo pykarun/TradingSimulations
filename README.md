@@ -2,6 +2,20 @@
 
 A comprehensive trading simulation and automated trading platform for leveraged ETFs, specifically designed for trading TQQQ (3x leveraged QQQ ETF) based on QQQ technical indicators.
 
+## Live Demo
+
+🚀 **Try it now:** [Trading Simulations App](https://tradingsimulations-chyxhutau9heypjetxn2rz.streamlit.app/)
+
+### Screenshots
+
+<img src="https://github.com/user-attachments/assets/a3f8770a-2f86-4432-a47f-e0da29110ada" alt="Trading Simulation Steps" width="250">
+
+<img src="https://github.com/user-attachments/assets/1256533c-9b86-4898-9d63-2f22f0424044" alt="Configure Strategy Features" width="800">
+
+<img src="https://github.com/user-attachments/assets/d7ea1d9b-85ef-43ba-8591-ebcc5cccf194" alt="Testing Progress" width="600">
+
+<img src="https://github.com/user-attachments/assets/841958b7-8750-418e-aa2b-36b7a98ecf1e" alt="Performance Analysis" width="800">
+
 ## Overview
 
 This project provides two main components:
